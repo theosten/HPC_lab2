@@ -1,1 +1,2 @@
-# HPC_lab2
+# HPC_lab
+Hello this is initial commit can u see dis?
