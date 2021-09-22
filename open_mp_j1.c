@@ -21,8 +21,11 @@ int main (int argc, char *argv[]) {
 	omp_set_num_threads(10);
 	int nr_read_start;
 	int nr_read_end;
-	
-	clock_t time = clock();
+
+	struct timespec start_time;
+	struct timespec end_time;
+	double time;
+	timespec_get(&start_time, TIME_UTC);	
 
 	do {
 		nr_read_start = fread(buffer, 1, bpn*size*dimension, fp);
@@ -33,13 +36,14 @@ int main (int argc, char *argv[]) {
 			if (buffer[bpn*i] == '-')
 				start_points[i] *= -1;
 		}
-		#pragma omp parallel for
+		#pragma omp parallel for shared (histogram)
 		for (size_t i = 0; i < nr_read_start/bpn; i+=dimension) {
 			for (size_t j = i+dimension; j < nr_read_start/bpn; j+=dimension) {
 				dist = sqrtf((float)((start_points[i]-start_points[j])*(start_points[i]-
 						 start_points[j])+(start_points[i+1]-start_points[j+1])*(start_points[i+1]
 						 -start_points[j+1])+(start_points[i+2]-start_points[j+2])*(start_points[i+2]
 						 -start_points[j+2]))/1000000);
+				#pragma omp atomic
 				histogram[(int)(dist*100)] += 1; // collisions highly unlikely
 			}
 		}
@@ -56,13 +60,14 @@ int main (int argc, char *argv[]) {
 				if (buffer[bpn*i] == '-')
 					end_points[i] *= -1;
 			}
-			#pragma omp parallel for
+			#pragma omp parallel for shared (histogram)
 			for (size_t i = 0; i < nr_read_start/bpn; i+=dimension) {
 				for (size_t j = 0; j < nr_read_end/bpn; j+=dimension) {
 					dist = sqrtf((float)((start_points[i]-end_points[j])*(start_points[i]-
 							 end_points[j])+(start_points[i+1]-end_points[j+1])*(start_points[i+1]
 							 -end_points[j+1])+(start_points[i+2]-end_points[j+2])*(start_points[i+2]
 							 -end_points[j+2]))/1000000);
+					#pragma omp atomic
 					histogram[(int)(dist*100)] += 1; // collisions highly unlikely
 				}
 			}
@@ -71,7 +76,9 @@ int main (int argc, char *argv[]) {
 		fseek(fp, block_end, SEEK_SET);
 	} while (nr_read_start == size*dimension*bpn);
 
-	double avg_time = (double)(clock() - time) / CLOCKS_PER_SEC;
+	timespec_get(&end_time, TIME_UTC);
+	time = difftime(end_time.tv_sec, start_time.tv_sec) +
+			 (end_time.tv_nsec - start_time.tv_nsec) / 1000000000.;
 
 	int sum = 0;
 	for (size_t i = 0; i <= max_dist; i++)
@@ -79,7 +86,7 @@ int main (int argc, char *argv[]) {
 			sum += histogram[i];
 			printf("%02d.%02d %d\n", i/100, i%100, histogram[i]);
 		}
-	printf("Runtime: %f, %d\n", avg_time, sum);
+	printf("Runtime: %f, %d\n", time, sum);
 	
 	fclose(fp);
 	free(histogram);
