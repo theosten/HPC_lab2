@@ -5,11 +5,11 @@
 #include <math.h>
 
 int main (int argc, char *argv[]) {
-	int size = 400000;
+	int size = 10;
 	int dimension = 3;
 	int max_dist = 3465;
-	FILE *start_fp = fopen("data.txt", "r");
-	FILE *end_fp;
+	FILE *fp = fopen("data.txt", "r");
+	int block_end;
 	int *histogram = (int*) malloc(sizeof(int)*max_dist);
 	for (size_t i = 0; i < max_dist; i++)
 		histogram[i] = 0;
@@ -17,14 +17,14 @@ int main (int argc, char *argv[]) {
 	short int *end_points = (short int*) malloc(sizeof(short int)*dimension*size); // <2.5MiB
 	int length = size*3;
 	float dist;
-	omp_set_num_threads(8);
+	omp_set_num_threads(4);
 	char array[24];
 	int done = 0;
 	clock_t time = clock();
 
 	while (length == size*3) {
 		for (size_t i = 0; i < size*dimension; i+=dimension) {
-			if (fread(array, 1, 24, start_fp) == 24) {
+			if (fread(array, 1, 24, fp) == 24) {
 				start_points[i] = (array[1]-'0')*10000+(array[2]-'0')*1000+(array[4]-'0')*100
 								 +(array[5]-'0')*10+array[6]-'0';
 				if (array[0] == '-')
@@ -53,11 +53,11 @@ int main (int argc, char *argv[]) {
 				histogram[(int)(dist*100)] += 1; // collisions highly unlikely
 			}
 		}
-		end_fp = start_fp;
+		block_end = ftell(fp);
 		done = size*3;
 		while (done == size*3) {
 			for (size_t i = 0; i < size*dimension; i+=dimension) {
-				if (fread(array, 1, 24, end_fp) == 24) {
+				if (fread(array, 1, 24, fp) == 24) {
 					end_points[i] = (array[1]-'0')*10000+(array[2]-'0')*1000+(array[4]-'0')*100
 									 +(array[5]-'0')*10+array[6]-'0';
 					if (array[0] == '-')
@@ -87,42 +87,18 @@ int main (int argc, char *argv[]) {
 				}
 			}
 		}
+		fseek(fp, block_end, SEEK_SET);
 	}
-
-	/*while (length == -1) {
-		for (size_t i = 0; i < size*dimension; i+=dimension) {
-			if (fscanf(start_fp, "%f", &start_points[i]) == 1) {
-				// not for loop for efficiency
-				fscanf(start_fp, "%f", &start_points[i+1]);
-				fscanf(start_fp, "%f", &start_points[i+2]);
-			} else {
-				printf("Hello\n");
-				length = i;
-				break;
-			}
-		}
-		
-		#pragma omp parallel for
-		for (size_t i = 0; i < length; i+=3) {
-			for (size_t j = i+3; j < length; j+=3) {
-				dist = sqrtf((start_points[i]-start_points[j])*(start_points[i]-start_points[j])+
-								 (start_points[i+1]-start_points[j+1])*(start_points[i+1]-start_points[j+1])+
-								 (start_points[i+2]-start_points[j+2])*(start_points[i+2]-start_points[j+2]));
-				histogram[(int)(dist*100)] += 1; // collisions highly unlikely
-			}
-		}
-	}
-*/
 
 	double avg_time = (double)(clock() - time) / CLOCKS_PER_SEC;
 
 	for (size_t i = 0; i <= max_dist; i++)
-		if (histogram[i] != 0)
+		if (histogram[i] != 0) {
 			printf("%02d.%02d %d\n", i/100, i%100, histogram[i]);
+		}
 	printf("Runtime: %f\n", avg_time);
 	
-	fclose(start_fp);
-	//fclose(end_fp);
+	fclose(fp);
 	free(histogram);
 	free(start_points);
 	free(end_points);
