@@ -47,7 +47,7 @@ int main (int argc, char *argv[]) {
 				start_points[i] *= -1;
 		}
 		
-		#pragma omp parallel for
+		#pragma omp parallel for reduction (+:histogram)
 		for (i = 0; i < nr_read_start; i+=dimension) {
 			for (j = i+dimension; j < nr_read_start; j+=dimension) {
 				x = start_points[i]-start_points[j];
@@ -70,7 +70,7 @@ int main (int argc, char *argv[]) {
 					end_points[i] *= -1;
 			}
 			
-			#pragma omp parallel for
+			#pragma omp parallel for reduction (+:histogram)
 			for (i = 0; i < nr_read_start; i+=dimension) {
 				for (j = 0; j < nr_read_end; j+=dimension) {
 					x = start_points[i]-end_points[j];
