@@ -1,6 +1,4 @@
-test : test1.c
-	gcc -lm -fopenmp -O2 test1.c -o main
-.PHONY : clean
+cell_distances : test1.c
+	gcc -lm -fopenmp -O2 -std=c11 test1.c -o cell_distances
 clean :
-	rm -R distances
-	rm -R extracted
+	rm cell_distances
