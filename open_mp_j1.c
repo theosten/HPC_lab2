@@ -38,6 +38,7 @@ int main (int argc, char *argv[]) {
 
 	do {
 		nr_read_start = fread(buffer, 1, bpn*size*dimension, fp)/bpn;
+		printf("Start block: %d\n", nr_read_start);
 		#pragma omp parallel for
 		for (i = 0; i < nr_read_start; i++) {
 			start_points[i] = (buffer[bpn*i+1]-'0')*10.+(buffer[bpn*i+2]-'0')+
@@ -61,6 +62,7 @@ int main (int argc, char *argv[]) {
 
 		do {
 			nr_read_end = fread(buffer, 1, bpn*size*dimension, fp)/bpn;
+			printf("End block: %d\n", nr_read_end);
 			#pragma omp parallel for
 			for (i = 0; i < nr_read_end; i++) {
 				end_points[i] = (buffer[bpn*i+1]-'0')*10.+(buffer[bpn*i+2]-'0')+
@@ -87,11 +89,13 @@ int main (int argc, char *argv[]) {
 	timespec_get(&end_time, TIME_UTC);
 	time = difftime(end_time.tv_sec, start_time.tv_sec) +
 			 (end_time.tv_nsec - start_time.tv_nsec) / 1000000000.;
-
+	int sum = 0;
 	for (i = 0; i < max_dist; i++)
-		if (histogram[i] != 0)
-			printf("%02d.%02d %d\n", i/100, i%100, histogram[i]);
-	printf("Runtime: %f\n", time);
+		if (histogram[i] != 0) {
+			sum += histogram[i];
+			//printf("%02d.%02d %d\n", i/100, i%100, histogram[i]);
+		}
+	printf("Runtime: %f, %d\n", time, sum);
 	
 	fclose(fp);
 	free(start_points);
